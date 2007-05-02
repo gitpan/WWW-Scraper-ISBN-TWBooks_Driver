@@ -6,7 +6,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION @ISA);
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 #--------------------------------------------------------------------------
 
@@ -33,14 +33,13 @@ Searches for book information from the TWBooks' online catalog.
 use WWW::Scraper::ISBN::Driver;
 use WWW::Mechanize;
 use Template::Extract;
-
-use Data::Dumper;
+use Text::Iconv;
 
 ###########################################################################
 #Constants                                                                #
 ###########################################################################
 
-use constant	QUERY	=> 'http://www.books.com.tw/exep/openfind_book_keyword.php?cat1=4&key1=%s';
+use constant	QUERY	=> 'http://search.books.com.tw/exep/prod_search.php?cat=001&key=%s';
 
 #--------------------------------------------------------------------------
 
@@ -97,15 +96,19 @@ sub search {
 
 	# The Search Results page
 	my $template = <<END;
-<!-- 書封 -->[% ... %]<img [% ... %] src="[% image_link %]">[% ... %]
-<!-- 商品基本資料 : start -->[% ... %]class="itemtitle">[% title %]</td></tr>[% ... %]
-作者：[% ... %]"><a href="[% ... %]">[% author %]/著[% ... %]
-出版社：[% ... %]<a href="[% ... %]">[% publisher %]</a></td>[% ... %]
-出版日期：</span>[% pubdate %]</td>[% ... %]
-定價：[% ... %]">[% price_list %]</span> 元[% ... %]
-優惠價：[% ... %]itemprize">[% price_sell %]</span> 元[% ... %]
-規格：[% ... %] / [% pages %]頁[% ... %]
-ISBN：</font>[% isbn %]<br/>
+<td class="cov">[% ... %]
+image=[% image_link %]&width=[% ... %]
+<table>
+<tr>
+<td>
+<h3>[% title %]</h3>[% ... %]
+<a href="[% ... %]prod_search_author.php[% ... %]>[% author %]/[% ... %]
+<a href="[% ... %]pub_book.php[% ... %]>[% publisher %]</a>[% ... %]
+<i>[% pubdate %]</i>[% ... %]
+<u>[% price_list %]</u>[% ... %]
+<em>[% price_sell %]</em>[% ... %]
+&nbsp;/&nbsp;[% pages %]&nbsp;/&nbsp;[% ... %]
+ISBN[% ... %]<i>[% isbn %]</i>
 END
 
 	my $extract = Template::Extract->new;
@@ -117,15 +120,19 @@ END
 	$data->{image_link} =~ m/(\d+).jpg/;
 	my $tmp = $1;
 
+	$data->{pages} =~ s/(\d+).*/$1/;
+
+	my $conv = Text::Iconv->new("utf-8", "big5");
+
 	my $bk = {
 		'isbn'		=> $data->{isbn},
-		'title'		=> $data->{title},
-		'author'	=> $data->{author},
+		'title'		=> $conv->convert($data->{title}),
+		'author'	=> $conv->convert($data->{author}),
 		'pages'		=> $data->{pages},
 		'book_link'	=> "http://www.books.com.tw/exep/prod/booksfile.php?item=$tmp",
 		'image_link'	=> $data->{image_link},
-		'pubdate'	=> $data->{pubdate},
-		'publisher'	=> $data->{publisher},
+		'pubdate'	=> $conv->convert($data->{pubdate}),
+		'publisher'	=> $conv->convert($data->{publisher}),
 		'price_list'	=> $data->{price_list},
 		'price_sell'	=> $data->{price_sell},
 	};
